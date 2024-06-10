@@ -1,27 +1,28 @@
-# Analyzing Fast, Frequent, and Fine-grained Events for Sports Strategy Analytics
+# $F^3Tennis$: A Dataset for Analyzing Fast, Frequent, and Fine-grained Event Sequences from Videos
 ## Overview
-Analyzing Fast, Frequent, and Fine-grained ($F^3$) event sequences in sports videos is crucial for advanced sports analytics. The substantial labor required for labeling these videos constitutes a significant scalability barrier. Towards addressing this, we have built $FineTennis$, a comprehensive fine-grained tennis video dataset designed to facilitate deep, strategic analysis. This dataset, featuring over 1,000 event types and multi-level granularity, enables automated analysis of complex interactions and strategies required in the literature. However,  existing video understanding methods showed poor performance on $FineTennis$, highlighting a gap in current methods' ability to handle such detailed data. In response, we introduce $F^3EST$, an end-to-end model specifically designed to locate and recognize $F^3$ event sequences. This model integrates visual features with strategic causality across events. Our evaluations demonstrate that $F^3EST$ significantly outperforms existing approaches. Various applications have demonstrated the model's capability to automate the analysis of actions and tactics with appropriate levels of granularity. 
+Analyzing Fast, Frequent, and Fine-grained ($F^3$) events presents a significant challenge in video analytics and multi-modal LLMs. Although current methods exhibit efficacy on public benchmarks, they struggle to detect and identify $F^3$ events accurately due to challenges such as motion blur and subtle visual discrepancies. To address this, we introduce $F^3Tennis$, a new benchmark dataset built on tennis video specifically for $F^3$ event detection. $F^3Tennis$ is characterized by its extensive scale and comprehensive detail, encompassing over 1,000 event types with precise timestamps and supporting multi-level granularity. We evaluated popular temporal action understanding methods on $F^3Tennis$, revealing substantial challenges for existing techniques. Using tennis as a case study, we demonstrate the utility of $F^3$ sequences for advanced automated strategic analytics. The dataset and the benchmark code are accessible at https://github.com/F3EST/F3Tennis.
 
 ## Environment
 The code is tested in Linux (Ubuntu 22.04) with the dependency versions in requirements.txt.
 
 ## Dataset
-Refer to the READMEs in the [data](https://github.com/F3EST/F3EST/tree/main/data) directory for pre-processing and setup instructions.
+Refer to the READMEs in the [data](https://github.com/F3EST/F3Tennis/tree/main/data) directory for pre-processing and setup instructions.
 
 ## Basic usage
-To train a model, use `python3 train_f3est.py <dataset_name> <frame_dir> -s <save_dir> -m <model_arch>`.
+To train a model, use `python3 train_f3tennis.py <dataset_name> <frame_dir> -s <save_dir> -m <model_arch> -t <head_arch>`.
 
 * `<dataset_name>`: supports finetennis, badmintonDB, finediving, finegym
 * `<frame_dir>`: path to the extracted frames
 * `<save_dir>`: path to save logs, checkpoints, and inference results
-* `<model_arch>`: feature extractor architecture (e.g., rny002_gsm)
+* `<model_arch>`: feature extractor architecture (e.g., rny002_tsm)
+* `<head_arch>`: head module architecture (e.g., gru)
 
 Training will produce checkpoints, predictions for the `val` split, and predictions for the `test` split on the best validation epoch.
 
 ### Trained models
-Models and configurations can be found in [f3est-model](https://github.com/F3EST/F3EST/tree/main/f3est-model). Place the checkpoint file and config.json file in the same directory.
+Models and configurations can be found in [f3tennis-model](https://github.com/F3EST/F3Tennis/tree/main/f3tennis-model). Place the checkpoint file and config.json file in the same directory.
 
-To perform inference with an already trained model, use `python3 test_f3est.py <model_dir> <frame_dir> -s <split> --save`. This will output results for 2 evaluation metrics (F1 score and edit score).
+To perform inference with an already trained model, use `python3 test_f3tennis.py <model_dir> <frame_dir> -s <split> --save`. This will output results for 3 evaluation metrics (event-wise mean F1 score, element-wise mean F1 score, and edit score).
 
 ## Data format
 Each dataset has plaintext files that contain the list of event types `events.txt` and sub-class elements: `elements.txt`
@@ -62,6 +63,9 @@ video2/
 ├─ ...
 ```
 Similar format applies to the frames containing objects of interest.
+
+## Acknowledgement
+This code base is largely from [E2E-Spot](https://github.com/jhong93/spot). Many thanks to the authors.
 
 
 
