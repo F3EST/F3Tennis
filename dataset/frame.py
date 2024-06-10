@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import cv2
 import copy
 import random
 import numpy as np
@@ -10,9 +9,6 @@ import torch.nn as nn
 from torch.utils.data import Dataset
 import torchvision
 import torchvision.transforms as transforms
-import librosa
-from scipy.io import wavfile
-import matplotlib.pyplot as plt
 from util.io import load_json
 from .transform import RandomGaussianNoise, RandomHorizontalFlipFLow, \
     RandomOffsetFlow, SeedableRandomSquareCrop, ThreeCrop
@@ -169,11 +165,6 @@ def _get_img_transforms(
 
     img_transforms = []
     if not is_eval:
-        # # random horizontal flip
-        # img_transforms.append(
-        #     transforms.RandomHorizontalFlip()
-        # )
-
         if not defer_transform:
             img_transforms.extend([
                 # Jittering separately is faster (low variance)
@@ -265,12 +256,11 @@ class ActionSeqDataset(Dataset):
         self._frame_reader = FrameReader(frame_dir, crop_transform, img_transform, same_transform)
 
     def load_frame_gpu(self, batch, device):
-        key_padding_mask = batch['frame'].sum(dim=(2,3,4)) == 0
         if self._gpu_transform is None:
             frame = batch['frame'].to(device)
         else:
             frame = _load_frame_deferred(self._gpu_transform, batch, device)
-        return frame, key_padding_mask.to(device)
+        return frame
 
     def _sample_uniform(self):
         video_meta = random.choices(
@@ -303,7 +293,7 @@ class ActionSeqDataset(Dataset):
             stride=stride, randomize=not self._is_eval)
 
         return {'frame': frames,
-                'contains_event': int(np.sum(labels) > 0),
+                'contains_event': int(np.sum(frame_full_labels) > 0),
                 'frame_full_label': frame_full_labels}
 
     def __getitem__(self, unused):
@@ -373,13 +363,11 @@ class ActionSeqVideoDataset(Dataset):
         frames = self._frame_reader.load_frames(
             video_name, start, start + self._clip_len * stride, pad=True,
             stride=stride)
-        src_key_padding_mask = frames.sum(dim=(1, 2, 3)) == 0
 
         if self._flip:
             frames = torch.stack((frames, frames.flip(-1)), dim=0)
 
-        return {'video': video_name, 'fps': fps, 'start': start // stride,
-                'frame': frames, 'src_key_padding_mask': src_key_padding_mask}
+        return {'video': video_name, 'fps': fps, 'start': start // stride, 'frame': frames}
 
     def get_labels(self, video):
         meta = self._labels[self._video_idxs[video]]
