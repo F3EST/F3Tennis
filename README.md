@@ -14,8 +14,8 @@ To train all baseline models, use `python3 train_f3tennis_baselines.py <dataset_
 * `<dataset_name>`: f3tennis
 * `<frame_dir>`: path to the extracted frames
 * `<save_dir>`: path to save logs, checkpoints, and inference results
-* `<model_arch>`: feature extractor architecture (e.g., rny002_tsm)
-* `<head_arch>`: head module architecture (e.g., gru)
+* `<model_arch>`: feature extractor architecture (e.g., rny002, rny002_tsm, slowfast)
+* `<head_arch>`: head module architecture (e.g., mstcn, asformer, gcn, actionformer, gru)
 
 Similarly, we also provide the code `train_f3tennis_multi-label.py` for training under the multi-label setting. Use `python3 train_f3tennis_multi-label.py <dataset_name> <frame_dir> -s <save_dir> -m <model_arch> -t <head_arch>`.
 
