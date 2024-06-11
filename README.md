@@ -9,13 +9,15 @@ The code is tested in Linux (Ubuntu 22.04) with the dependency versions in requi
 Refer to the READMEs in the [data](https://github.com/F3EST/F3Tennis/tree/main/data) directory for pre-processing and setup instructions.
 
 ## Basic usage
-To train a model, use `python3 train_f3tennis.py <dataset_name> <frame_dir> -s <save_dir> -m <model_arch> -t <head_arch>`.
+To train all baseline models, use `python3 train_f3tennis_baselines.py <dataset_name> <frame_dir> -s <save_dir> -m <model_arch> -t <head_arch>`.
 
-* `<dataset_name>`: supports finetennis, badmintonDB, finediving, finegym
+* `<dataset_name>`: f3tennis
 * `<frame_dir>`: path to the extracted frames
 * `<save_dir>`: path to save logs, checkpoints, and inference results
 * `<model_arch>`: feature extractor architecture (e.g., rny002_tsm)
 * `<head_arch>`: head module architecture (e.g., gru)
+
+Similarly, we also provide the code `train_f3tennis_multi-label.py` for training under the multi-label setting. Use `python3 train_f3tennis_multi-label.py <dataset_name> <frame_dir> -s <save_dir> -m <model_arch> -t <head_arch>`.
 
 Training will produce checkpoints, predictions for the `val` split, and predictions for the `test` split on the best validation epoch.
 
@@ -25,7 +27,7 @@ Models and configurations can be found in [f3tennis-model](https://github.com/F3
 To perform inference with an already trained model, use `python3 test_f3tennis.py <model_dir> <frame_dir> -s <split> --save`. This will output results for 3 evaluation metrics (event-wise mean F1 score, element-wise mean F1 score, and edit score).
 
 ## Data format
-Each dataset has plaintext files that contain the list of event types `events.txt` and sub-class elements: `elements.txt`
+Each dataset has plaintext files that contain the list of event types `events.txt` and elements: `elements.txt`
 
 This is a list of the event names, one per line: `{split}.json`
 
