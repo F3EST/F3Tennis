@@ -2,13 +2,13 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import Tensor
 import numpy as np
 
 from .common import SingleStageTCN
 from .impl.asformer import MyTransformer
 from .impl.gtad import GCNeXt
 from .impl.actionformer import ConvTransformerBackbone, FPN1D, PtTransformerClsHead
+
 
 class Unit3D(nn.Module):
 
@@ -173,15 +173,15 @@ class GRU_FC(nn.Module):
 
 class TCNPrediction(nn.Module):
 
-    def __init__(self, feat_dim, num_classes, num_stages=1, num_layers=5):
+    def __init__(self, feat_dim, num_classes, num_stages=1, num_layers=5, hidden_dim=256):
         super().__init__()
 
         self._tcn = SingleStageTCN(
-            feat_dim, 256, num_classes, num_layers, True)
+            feat_dim, hidden_dim, num_classes, num_layers, True)
         self._stages = None
         if num_stages > 1:
             self._stages = nn.ModuleList([SingleStageTCN(
-                num_classes, 256, num_classes, num_layers, True)
+                num_classes, hidden_dim, num_classes, num_layers, True)
                 for _ in range(num_stages - 1)])
 
     def forward(self, x):
@@ -198,11 +198,11 @@ class TCNPrediction(nn.Module):
 
 class ASFormerPrediction(nn.Module):
 
-    def __init__(self, feat_dim, num_classes, num_decoders=3, num_layers=5):
+    def __init__(self, feat_dim, num_classes, num_decoders=3, num_layers=5, hidden_dim=64):
         super().__init__()
 
         r1, r2 = 2, 2
-        num_f_maps = 64
+        num_f_maps = hidden_dim
         self._net = MyTransformer(
             num_decoders, num_layers, r1, r2, num_f_maps, feat_dim,
             num_classes, channel_masking_rate=0.3)
@@ -212,8 +212,8 @@ class ASFormerPrediction(nn.Module):
         return self._net(
             x.permute(0, 2, 1), torch.ones((B, 1, T), device=x.device)
         ).permute(0, 1, 3, 2)
-    
-    
+
+
 class GCNPrediction(nn.Module):
 
     def __init__(self, feat_dim, num_classes, hidden_dim=256, num_layers=2):
@@ -235,7 +235,9 @@ class GCNPrediction(nn.Module):
     def forward(self, x):
         del self.idx_list[:]
         batch_size, clip_len, _ = x.shape
-        x = self.fc_in(x.view(batch_size * clip_len, -1))
+        # print(x.shape)
+        # print(x.reshape(batch_size * clip_len, -1).shape)
+        x = self.fc_in(x.reshape(batch_size * clip_len, -1))
         x = F.relu(x).view(batch_size, clip_len, -1)
         x = self.backbone(x.permute(0, 2, 1)).permute(0, 2, 1)
         x = self.dropout(x)
@@ -245,9 +247,10 @@ class GCNPrediction(nn.Module):
 
 class ActionFormerPrediction(nn.Module):
 
-    def __init__(self, feat_dim, num_classes, kernal_size=3, d_model=256, n_head=4, max_len=128):
+    def __init__(self, feat_dim, num_classes, kernal_size=3, hidden_dim=256, n_head=4, max_len=128):
         super().__init__()
 
+        d_model = hidden_dim
         self.backbone = ConvTransformerBackbone(feat_dim, d_model, n_head, 3, max_len)
         self.neck = FPN1D([d_model], d_model)
         self.cls_head = PtTransformerClsHead(d_model, d_model, num_classes)
@@ -260,115 +263,3 @@ class ActionFormerPrediction(nn.Module):
         fpn_feats, fpn_masks = self.neck(feats, masks)
         out_cls_logits = self.cls_head(fpn_feats, fpn_masks)
         return out_cls_logits[0].transpose(1, 2)
-        
-
-# helper Module that adds positional encoding to the token embedding to introduce a notion of word order.
-class PositionalEncoding(nn.Module):
-    def __init__(self,
-                 emb_size: int,
-                 dropout: float = 0.2,
-                 maxlen: int = 200):
-        super(PositionalEncoding, self).__init__()
-        den = torch.exp(-torch.arange(0, emb_size, 2) * math.log(10000) / emb_size)
-        # pos = torch.arange(0, maxlen).reshape(maxlen, 1)
-        pos = torch.arange(0, maxlen).unsqueeze(1)
-        # pos_embedding = torch.zeros((maxlen, emb_size))
-        self.pos_embedding = nn.Parameter(torch.zeros(1, maxlen, emb_size), requires_grad=False)
-        self.pos_embedding[:, :, 0::2] = torch.sin(pos * den)
-        self.pos_embedding[:, :, 1::2] = torch.cos(pos * den)
-        # pos_embedding = pos_embedding.unsqueeze(-2)
-
-        self.dropout = nn.Dropout(dropout)
-        # self.register_buffer('pos_embedding', pos_embedding)
-
-    def forward(self, token_embedding: Tensor):
-        # return self.dropout(token_embedding + self.pos_embedding[:token_embedding.size(0), :])
-        return self.dropout(token_embedding + self.pos_embedding[:, :token_embedding.size(1)].detach())
-
-
-# helper Module to convert tensor of input indices into corresponding tensor of token embeddings
-class TokenEmbedding(nn.Module):
-    def __init__(self, vocab_size: int, emb_size):
-        super(TokenEmbedding, self).__init__()
-        self.embedding = nn.Embedding(vocab_size, emb_size)
-        self.emb_size = emb_size
-
-    def forward(self, tokens: Tensor):
-        return self.embedding(tokens.long()) * math.sqrt(self.emb_size)
-
-
-# Encoder Transformer
-class EncoderTransformer(nn.Module):
-    def __init__(self, feat_dim, d_model, nhead=8, dim_feedforward=512, num_layers=3, dropout=0.1, activation='gelu',
-                 kernal_size=3, use_conv=True, device=None):
-        super(EncoderTransformer, self).__init__()
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead,
-                                                   dim_feedforward=dim_feedforward,
-                                                   activation=activation,
-                                                   batch_first=True,
-                                                   dropout=dropout)
-        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        self.positional_encoding = PositionalEncoding(d_model)
-        self.gelu = nn.GELU()
-        if use_conv:
-            self.conv = nn.Conv1d(d_model, d_model, kernal_size, stride=1, padding=kernal_size // 2)
-
-        else:
-            self.conv = None
-
-    def forward(self, src, mask=None, src_key_padding_mask=None, is_causal=None):
-        if self.conv is not None:
-            src = self.gelu(self.conv(src.transpose(1, 2)).transpose(1, 2))
-        return src
-        src = self.positional_encoding(src)
-        return self.encoder(src, mask, src_key_padding_mask, is_causal)
-
-
-# Sequence Encoder
-class Encoder(nn.Module):
-    def __init__(self, num_classes, d_model, nhead=8, dim_feedforward=512, num_layers=3, dropout=0.1, activation='gelu',
-                 device=None):
-        super(Encoder, self).__init__()
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead,
-                                                   dim_feedforward=dim_feedforward,
-                                                   activation=activation,
-                                                   batch_first=True,
-                                                   dropout=dropout)
-        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        self.positional_encoding = PositionalEncoding(d_model)
-        self.gelu = nn.GELU()
-        self.tok_emb = nn.Linear(num_classes + 2, d_model)
-        self.generator = nn.Linear(d_model, num_classes)
-        self.cls = nn.Linear(d_model, 2)
-
-    def forward(self, src, mask=None, src_key_padding_mask=None, is_causal=None):
-        src = self.tok_emb(src)
-        src = self.positional_encoding(src)
-        src = self.encoder(src, mask, src_key_padding_mask, is_causal)
-        return self.generator(self.gelu(src)), self.cls(src)
-
-
-# Decoder Transformer
-class DecoderTransformer(nn.Module):
-    def __init__(self, d_model, tgt_vocab_size, nhead=8, dim_feedforward=512, num_layers=3, dropout=0.1,
-                 activation='gelu', device=None):
-        super(DecoderTransformer, self).__init__()
-        decoder_layer = nn.TransformerDecoderLayer(d_model=d_model, nhead=nhead,
-                                                   dim_feedforward=dim_feedforward,
-                                                   activation=activation,
-                                                   batch_first=True,
-                                                   dropout=dropout)
-        self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
-        self.positional_encoding = PositionalEncoding(d_model)
-        self.tgt_tok_emb = TokenEmbedding(tgt_vocab_size, d_model)
-        self.generator = nn.Linear(d_model, tgt_vocab_size)
-
-    def forward(self, tgt, memory, tgt_mask=None, memory_mask=None, tgt_key_padding_mask=None,
-                memory_key_padding_mask=None):
-        tgt = self.tgt_tok_emb(tgt)
-        tgt = self.positional_encoding(tgt)
-        outs_feat = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
-                                 tgt_key_padding_mask=tgt_key_padding_mask,
-                                 memory_key_padding_mask=memory_key_padding_mask)
-        outs = self.generator(outs_feat)
-        return outs, outs_feat

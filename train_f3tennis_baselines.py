@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" Training for Baselines """
+""" Training for F3Tennis """
 import os
 import argparse
 from contextlib import nullcontext
@@ -80,7 +80,7 @@ def get_args():
     parser.add_argument('-mgpu', '--gpu_parallel', action='store_true')
     return parser.parse_args()
 
-class Baselines(BaseRGBModel):
+class F3Tennis(BaseRGBModel):
 
     class Impl(nn.Module):
 
@@ -123,21 +123,11 @@ class Baselines(BaseRGBModel):
             self._is_3d = 'slowfast' in feature_arch
 
             # head modules
-            hidden_dim = self._feat_dim
-            if hidden_dim > HIDDEN_DIM:
-                hidden_dim = HIDDEN_DIM
-                print('Clamped hidden dim: {} -> {}'.format(self._feat_dim, hidden_dim))
-            if 'gru' in temporal_arch:
-                if temporal_arch in ('gru', 'deeper_gru'):
-                    self._pred_fine = GRUPrediction(
-                        self._feat_dim, num_classes, hidden_dim,
-                        num_layers=3 if temporal_arch[0] == 'd' else 1)
-                else:
-                    raise NotImplementedError(temporal_arch)
+            d_model = min(HIDDEN_DIM, self._feat_dim)
             if temporal_arch == 'gru':  # single layer GRU
-                self._pred_fine = GRUPrediction(self._feat_dim, num_classes, hidden_dim, num_layers=1)
+                self._pred_fine = GRUPrediction(self._feat_dim, num_classes, d_model, num_layers=1)
             elif temporal_arch == 'deeper_gru':  # deeper GRU
-                self._pred_fine = GRUPrediction(self._feat_dim, num_classes, hidden_dim, num_layers=3)
+                self._pred_fine = GRUPrediction(self._feat_dim, num_classes, d_model, num_layers=3)
             elif temporal_arch == 'tcn':  # single TCN
                 self._pred_fine = TCNPrediction(self._feat_dim, num_classes, 1)
             elif temporal_arch == 'mstcn':  # multi-stage TCN
@@ -145,9 +135,9 @@ class Baselines(BaseRGBModel):
             elif temporal_arch == 'asformer':  # ASFormer
                 self._pred_fine = ASFormerPrediction(self._feat_dim, num_classes, 3)
             elif temporal_arch == 'gcn':  # G-TAD
-                self._pred_fine = GCNPrediction(self._feat_dim, num_classes, hidden_dim=hidden_dim)
+                self._pred_fine = GCNPrediction(self._feat_dim, num_classes, hidden_dim=d_model)
             elif temporal_arch == 'actionformer':  # Actionformer
-                self._pred_fine = ActionFormerPrediction(self._feat_dim, num_classes, hidden_dim=hidden_dim)
+                self._pred_fine = ActionFormerPrediction(self._feat_dim, num_classes, hidden_dim=d_model)
             elif temporal_arch == 'fc':  # Simple Fully-Connected Layer
                 self._pred_fine = FCPrediction(self._feat_dim, num_classes)
             else:
@@ -180,7 +170,7 @@ class Baselines(BaseRGBModel):
     def __init__(self, num_classes, feature_arch, temporal_arch, clip_len, step=1, device='cuda', multi_gpu=False):
         self._device = device
         self._multi_gpu = multi_gpu
-        self._model = Baselines.Impl(num_classes, feature_arch, temporal_arch, clip_len, step=step)
+        self._model = F3Tennis.Impl(num_classes, feature_arch, temporal_arch, clip_len, step=step)
 
         if multi_gpu:
             self._model = nn.DataParallel(self._model)
@@ -248,7 +238,7 @@ class Baselines(BaseRGBModel):
             return pred_cls.cpu().numpy(), pred.cpu().numpy()
 
 
-def evaluate(model, dataset, classes, delta=0, device='cuda'):
+def evaluate(model, dataset, classes, delta=0):
     pred_dict = {}
     for video, video_len, _ in dataset.videos:
         pred_dict[video] = (
@@ -379,7 +369,6 @@ def evaluate(model, dataset, classes, delta=0, device='cuda'):
                 else:
                     f1_event_mid[labels_mid[i]][2] += 1
 
-
             if preds_low[i] > 0 and preds_low[i] in labels_low[max(0, i-delta):min(len(pred),i+delta+1)]:
                 if preds_low[i] not in f1_event_low:
                     f1_event_low[preds_low[i]] = [1, 0, 0]
@@ -436,7 +425,7 @@ def evaluate(model, dataset, classes, delta=0, device='cuda'):
         f1_low += 2 * precision * recall / (precision + recall + 1e-10)
         count += 1
     f1_low /= count
-    
+
     print('Mean F1 (event) high:', np.mean(f1_high))
     print('Mean F1 (event) mid:', np.mean(f1_mid))
     print('Mean F1 (event) low:', np.mean(f1_low))
@@ -447,6 +436,7 @@ def evaluate(model, dataset, classes, delta=0, device='cuda'):
     f1_high = 2 * precision * recall / (precision + recall + 1e-10)
     f1_mid = f1_high[:24]
     f1_low = f1_high[[0, 1, 5, 6, 7, 8, 9, 26, 27, 28, 29]]
+    
     print('Mean F1 (element) high:', np.mean(f1_high))
     print('Mean F1 (element) mid:', np.mean(f1_mid))
     print('Mean F1 (element) low:', np.mean(f1_low))
@@ -591,7 +581,7 @@ def main(args):
         pin_memory=True, num_workers=BASE_NUM_WORKERS,
         worker_init_fn=worker_init_fn)
 
-    model = Baselines(len(classes) + 1, args.feature_arch, args.temporal_arch, clip_len=args.clip_len, step=args.stride,
+    model = F3Tennis(len(classes) + 1, args.feature_arch, args.temporal_arch, clip_len=args.clip_len, step=args.stride,
                   multi_gpu=args.gpu_parallel)
     optimizer, scaler = model.get_optimizer({'lr': args.learning_rate})
 
@@ -629,7 +619,7 @@ def main(args):
                 print('New best epoch!')
         elif args.criterion == 'edit':
             if epoch >= args.start_val_epoch:
-                val_edit = evaluate(model, val_data_frames, classes, with_tolerance=args.with_tolerance)
+                val_edit = evaluate(model, val_data_frames, classes)
                 if args.criterion == 'edit' and val_edit > best_criterion:
                     best_criterion = val_edit
                     best_epoch = epoch
@@ -672,7 +662,7 @@ def main(args):
                 split_data = ActionSeqVideoDataset(classes, split_path, args.frame_dir, args.clip_len, overlap_len=0,
                                                    crop_dim=args.crop_dim, stride=args.stride)
                 split_data.print_info()
-                evaluate(model, split_data, classes, with_tolerance=args.with_tolerance)
+                evaluate(model, split_data, classes)
 
 
 if __name__ == '__main__':

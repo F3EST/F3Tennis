@@ -12,10 +12,6 @@ from torch.utils.data import Dataset
 import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
-import librosa
-from scipy.io import wavfile
-import matplotlib.pyplot as plt
-from mmpose.codecs import AssociativeEmbedding
 from util.io import load_json
 from .transform import RandomGaussianNoise, RandomHorizontalFlipFLow, \
     RandomOffsetFlow, SeedableRandomSquareCrop, ThreeCrop
@@ -267,12 +263,11 @@ class ActionSeqDataset(Dataset):
         self._frame_reader = FrameReader(frame_dir, crop_transform, img_transform, same_transform)
 
     def load_frame_gpu(self, batch, device):
-        key_padding_mask = batch['frame'].sum(dim=(2,3,4)) == 0
         if self._gpu_transform is None:
             frame = batch['frame'].to(device)
         else:
             frame = _load_frame_deferred(self._gpu_transform, batch, device)
-        return frame, key_padding_mask.to(device)
+        return frame
 
     def _sample_uniform(self):
         video_meta = random.choices(
@@ -383,10 +378,7 @@ class ActionSeqVideoDataset(Dataset):
                 (clip_len - overlap_len) * self._stride
             ):
                 has_clip = True
-                if 'far_hand' in l and 'near_hand' in l:
-                    self._clips.append((l['video'], l['far_hand'], l['near_hand'], l['fps'], i))
-                else:
-                    self._clips.append((l['video'], 0, 0, l['fps'], i))
+                self._clips.append((l['video'], l['far_hand'], l['near_hand'], l['fps'], i))
             assert has_clip, l
 
     def __len__(self):
