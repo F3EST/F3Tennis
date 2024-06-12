@@ -367,33 +367,33 @@ def evaluate(model, dataset, classes, delta=0):
                 else:
                     f1_event_high[labels_high[i]][2] += 1
 
-            if preds_mid[i] > 0 and preds_mid[i] in labels_mid[max(0, i-delta):min(len(pred),i+delta+1)]:
+            if preds_mid[i] > 0 and preds_mid[i] in labels_mid[max(0, i-delta):min(len(preds_high),i+delta+1)]:
                 if preds_mid[i] not in f1_event_mid:
                     f1_event_mid[preds_mid[i]] = [1, 0, 0]
                 else:
                     f1_event_mid[preds_mid[i]][0] += 1
-            if preds_mid[i] > 0 and sum(labels_mid[max(0, i-delta):min(len(pred),i+delta+1)]) == 0:
+            if preds_mid[i] > 0 and sum(labels_mid[max(0, i-delta):min(len(preds_high),i+delta+1)]) == 0:
                 if preds_mid[i] not in f1_event_mid:
                     f1_event_mid[preds_mid[i]] = [0, 1, 0]
                 else:
                     f1_event_mid[preds_mid[i]][1] += 1
-            if labels_mid[i] > 0 and labels_mid[i] not in preds_mid[max(0, i-delta):min(len(pred),i+delta+1)]:
+            if labels_mid[i] > 0 and labels_mid[i] not in preds_mid[max(0, i-delta):min(len(preds_high),i+delta+1)]:
                 if labels_mid[i] not in f1_event_mid:
                     f1_event_mid[labels_mid[i]] = [0, 0, 1]
                 else:
                     f1_event_mid[labels_mid[i]][2] += 1
 
-            if preds_low[i] > 0 and preds_low[i] in labels_low[max(0, i-delta):min(len(pred),i+delta+1)]:
+            if preds_low[i] > 0 and preds_low[i] in labels_low[max(0, i-delta):min(len(preds_high),i+delta+1)]:
                 if preds_low[i] not in f1_event_low:
                     f1_event_low[preds_low[i]] = [1, 0, 0]
                 else:
                     f1_event_low[preds_low[i]][0] += 1
-            if preds_low[i] > 0 and sum(labels_low[max(0, i-delta):min(len(pred),i+delta+1)]) == 0:
+            if preds_low[i] > 0 and sum(labels_low[max(0, i-delta):min(len(preds_high),i+delta+1)]) == 0:
                 if preds_low[i] not in f1_event_low:
                     f1_event_low[preds_low[i]] = [0, 1, 0]
                 else:
                     f1_event_low[preds_low[i]][1] += 1
-            if labels_low[i] > 0 and labels_low[i] not in preds_low[max(0, i-delta):min(len(pred),i+delta+1)]:
+            if labels_low[i] > 0 and labels_low[i] not in preds_low[max(0, i-delta):min(len(preds_high),i+delta+1)]:
                 if labels_low[i] not in f1_event_low:
                     f1_event_low[labels_low[i]] = [0, 0, 1]
                 else:
