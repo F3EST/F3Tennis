@@ -24,7 +24,7 @@ Training will produce checkpoints, predictions for the `val` split, and predicti
 ### Trained models
 Models and configurations can be found in [f3tennis-model](https://github.com/F3EST/F3Tennis/tree/main/f3tennis-model). Place the checkpoint file and config.json file in the same directory.
 
-To perform inference with an already trained model, use `python3 test_f3tennis.py <model_dir> <frame_dir> -s <split> --save`. This will output results for 3 evaluation metrics (event-wise mean F1 score, element-wise mean F1 score, and edit score).
+To perform inference with an already trained model, use `python3 test_f3tennis.py <model_dir> <frame_dir> -s <split>`. This will output results for 3 evaluation metrics (event-wise mean F1 score, element-wise mean F1 score, and edit score).
 
 ## Data format
 Each dataset has plaintext files that contain the list of event types `events.txt` and elements: `elements.txt`
