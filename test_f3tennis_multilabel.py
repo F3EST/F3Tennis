@@ -9,7 +9,7 @@ import torch
 from dataset.frame_process import ActionSeqVideoDataset
 from util.io import load_json
 from util.dataset import load_classes
-from train_f3est import F3EST, evaluate
+from train_f3tennis_multilabel import F3Tennis, evaluate
 
 
 def get_args():
@@ -63,22 +63,20 @@ def main(model_dir, frame_dir, split, dataset):
             print('Dataset mismatch: {} != {}'.format(
                 dataset, config['dataset']))
 
-    classes = load_classes(os.path.join('data', dataset, 'classes.txt'))
+    classes = load_classes(os.path.join('data', dataset, 'elements.txt'))
 
-    model = F3EST(len(classes), config['feature_arch'], config['temporal_arch'], clip_len=config['clip_len'],
-                  step=config['stride'], multi_gpu=config['gpu_parallel'], parse_att_mask=config['sparse_att_mask'], 
-                  max_seq_len=config['max_seq_len'])
+    model = F3Tennis(len(classes), config['feature_arch'], config['temporal_arch'], clip_len=config['clip_len'],
+                     step=config['stride'], multi_gpu=config['gpu_parallel'])
 
     model.load(torch.load(os.path.join(
         model_dir, 'checkpoint_{:03d}.pt'.format(best_epoch))))
 
     split_path = os.path.join('data', dataset, '{}.json'.format(split))
     split_data = ActionSeqVideoDataset(classes, split_path, frame_dir, config['clip_len'], 
-                                       overlap_len=config['clip_len'] // 2,
-                                       max_seq_len=config['max_seq_len'], crop_dim=config['crop_dim'], 
+                                       overlap_len=config['clip_len'] // 2, crop_dim=config['crop_dim'], 
                                        stride=config['stride'])
 
-    evaluate(model, split_data, split.upper(), classes)
+    evaluate(model, split_data, classes)
 
 
 if __name__ == '__main__':

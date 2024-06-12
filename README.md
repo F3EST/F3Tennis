@@ -17,14 +17,14 @@ To train all baseline models, use `python3 train_f3tennis_baselines.py <dataset_
 * `<model_arch>`: feature extractor architecture (e.g., rny002, rny002_tsm, slowfast)
 * `<head_arch>`: head module architecture (e.g., mstcn, asformer, gcn, actionformer, gru)
 
-Similarly, we also provide the code `train_f3tennis_multi-label.py` for training under the multi-label setting. Use `python3 train_f3tennis_multi-label.py <dataset_name> <frame_dir> -s <save_dir> -m <model_arch> -t <head_arch>`. However, for the `<head_arch>` in `train_f3tennis_multi-label.py`, currently we only implemented `gru`. 
+Similarly, we also provide the code `train_f3tennis_multilabel.py` for training under the multi-label setting. Use `python3 train_f3tennis_multilabel.py <dataset_name> <frame_dir> -s <save_dir> -m <model_arch> -t <head_arch>`. However, for the `<head_arch>` in `train_f3tennis_multilabel.py`, currently we only implemented `gru`. 
 
 Training will produce checkpoints, predictions for the `val` split, and predictions for the `test` split on the best validation epoch.
 
 ### Trained models
 Models and configurations can be found in [f3tennis-model](https://github.com/F3EST/F3Tennis/tree/main/f3tennis-model). Place the checkpoint file and config.json file in the same directory.
 
-To perform inference with an already trained model, use `python3 test_f3tennis.py <model_dir> <frame_dir> -s <split>`. This will output results for 3 evaluation metrics (event-wise mean F1 score, element-wise mean F1 score, and edit score).
+To perform inference with an already trained model, use `python3 test_f3tennis_baselines.py <model_dir> <frame_dir> -s <split>` or `python3 test_f3tennis_multilabel.py <model_dir> <frame_dir> -s <split>`. This will output results for 3 evaluation metrics (event-wise mean F1 score, element-wise mean F1 score, and edit score).
 
 ## Data format
 Each dataset has plaintext files that contain the list of event types `events.txt` and elements: `elements.txt`
