@@ -35,8 +35,21 @@ This file contains entries for each video and its contained events.
 ```
 [
     {
-        "video": VIDEO_ID,
-        "num_frames": 518,                 // Video length
+        "fps": 25,
+        "height": 720,
+        "width": 1280,
+        "num_frames": 342,  // number of frames in this clip
+        "video": "20210909-W-US_Open-SF-Aryna_Sabalenka-Leylah_Fernandez_170943_171285",  // "video name"_"start frame of the clip"_"end frame of the clip"
+        "far_name": "Leylah Fernandez",  // far-end player's name
+        "far_hand": "LH",  // far-end player's handedness
+        "far_set": 1,  // far-end player's set score
+        "far_game": 2,  // far-end player's game score
+        "far_point": 2,  // far-end player's point score
+        "near_name": "Aryna Sabalenka",  // near-end player's name
+        "near_hand": "RH",  // near-end player's handedness
+        "near_set": 1,  // near-end player's set score
+        "near_game": 2,  // near-end player's game score
+        "near_point": 0,  // near-end player's point score
         "events": [
             {
                 "frame": 100,               // Frame
@@ -44,9 +57,6 @@ This file contains entries for each video and its contained events.
             },
             ...
         ],
-        "fps": 25,
-        "width": 1280,      // Metadata about the source video
-        "height": 720
     },
     ...
 ]
